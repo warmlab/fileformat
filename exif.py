@@ -8,6 +8,7 @@ class ExifInfo:
         #self.__file_name =  file_name
         self.__endian = ''
         self.__exif = None
+        self.__exif_info = {}
 
     def _ifd_info(self, offset):
         entry_amount = self.__exif[offset:offset + 2]
@@ -24,6 +25,8 @@ class ExifInfo:
 
     def _data_handle(self, tag, data_type, length, data):
         if data_type == 2 or data_type == 1 or data_type == 6:
+            if data[-1] == '\x00':
+                data = data[:-1]
             return data
         elif data_type == 3:
             r = struct.unpack(''.join([self.__endian,'H'*length]), data)
@@ -71,9 +74,9 @@ class ExifInfo:
 
             value = self._data_handle(tag, fmt, length, data)
             if ifd_dic.has_key(tag):
-                print '%s: %s' % (ifd_dic[tag], value)
+                self.__exif_info[ifd_dic[tag]] = value
             else:
-                print '0x%x: %s' % (tag, value)
+                self.__exif_info[tag] = value
 
     def do_parse(self, file_name):
         f=open(file_name, 'rb')
@@ -115,7 +118,12 @@ class ExifInfo:
                 entry_amount = self._ifd_info(offset)
                 ifd_pos = offset + entry_amount * 12 + 2
 
+        return self.__exif_info
+
+from datetime import datetime
 if __name__ == '__main__':
     ei = ExifInfo()
     for i in xrange(1, len(sys.argv)):
-        ei.do_parse(sys.argv[i])
+        r = ei.do_parse(sys.argv[i])
+        d = datetime.strptime(r['DateTimeOriginal'], "%Y:%m:%d %H:%M:%S")
+        print d
